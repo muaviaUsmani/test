@@ -12,6 +12,8 @@ import List from "@material-ui/core/List"
 import ListItem from "@material-ui/core/ListItem"
 import ListItemText from "@material-ui/core/ListItemText"
 import * as actions from "../../actions"
+import Recipe from "../Recipe"
+import { generateURLSearchString, getURLSearchObject } from '../../utils'
 
 const ingredientList = ["flour", "sugar", "salt", "butter", "milk"]
 
@@ -21,13 +23,61 @@ class Home extends Component {
     this.handleSearch = this.handleSearch.bind(this)
     this.handleIngredient = this.handleIngredient.bind(this)
     this.fetchSearch = this.fetchSearch.bind(this)
+    this.redirectToSearch = this.redirectToSearch.bind(this)
+    this.selectRecipe = this.selectRecipe.bind(this)
     this.state = {
       term: "",
       ingredients: ["milk"],
     }
   }
+  componentDidMount() {
+    const { location } = this.props;
+    const searchParams = getURLSearchObject(location.search);
+    if (searchParams.has('recipeId')) {
+      this.props.updateRecipeId(searchParams.get('recipeId'))
+    }
+    if (
+      searchParams.has('term') && searchParams.has('ingredients')
+    ) {
+      const ingredientsList = searchParams.get('ingredients')
+      const ingredients = ingredientsList && ingredientsList.split(',') || []
+      const term = searchParams.get('term')
+      this.setState({
+        term: term,
+        ingredients: ingredients,
+      }, () => this.fetchSearch())
+    }
+  }
+  componentDidUpdate() {
+    const { recipes, recipeId } = this.props
+    const recipeIds = recipes?.map(recipe => recipe.id) || []
+    if (!recipeIds.includes(recipeId)) {
+      this.props.updateRecipeId(null)
+    }
+  }
+  redirectToSearch() {
+    const { history, location } = this.props;
+    const { term, ingredients } = this.state;
+
+    const params = [
+      {attribute: 'term', value: term},
+      {attribute: 'ingredients', value: ingredients},
+    ]
+    if (!term && !ingredients.length) {
+      params.push({attribute: 'recipeId', value: ''})
+      this.props.updateRecipeId(null)
+      this.props.resetRecipes()
+    }
+    history.push(
+      `${location.pathname}?${generateURLSearchString(location.search, params)}`
+    )
+    this.fetchSearch();
+  }
   fetchSearch() {
-    // TODO: something is missing here for fetching
+    const { term, ingredients } = this.state;
+    if (term || ingredients.length) {
+      this.props.searchRecipes(term, ingredients);
+    }
   }
   handleSearch(event) {
     const term = event.target.value
@@ -42,6 +92,13 @@ class Home extends Component {
       ingredients.splice(foundIngredient, 1)
     }
     this.setState({ ingredients })
+  }
+  selectRecipe(recipeId) {
+    const { history, location } = this.props;
+
+    history.push(
+      `${location.pathname}?${generateURLSearchString(location.search, [{attribute: 'recipeId', value: recipeId}])}`
+    )
   }
   render() {
     const { term, ingredients } = this.state
@@ -70,38 +127,41 @@ class Home extends Component {
             />
           ))}
         </div>
-        <Button onClick={this.fetchSearch}>search</Button>
+        <Button onClick={this.redirectToSearch}>search</Button>
         <Divider />
         {recipes && (
           <List>
             {recipes.map((recipe) => (
               <ListItem key={recipe.id}>
-                <ListItemText primary={recipe.name} />
+                <ListItemText 
+                  primary={recipe.name} 
+                  onClick={() => {
+                    this.selectRecipe(recipe.id)
+                    this.props.updateRecipeId(recipe.id)
+                  }} />
               </ListItem>
             ))}
           </List>
         )}
         {isLoading && <LinearProgress />}
         <Divider />
-        {/*
-          TODO: Add a recipe component here.
-          I'm expecting you to have it return null or a component based on the redux state, not passing any props from here
-          I want to see how you wire up a component with connect and build actions.
-        */}
+        <Recipe />
       </HomeWrapper>
     )
   }
 }
 
 const mapStateToProps = (state) => {
-  const { search } = state
-  return { ...search }
+  const { search, recipe } = state
+  return { ...search, recipeId: recipe.recipeId }
 }
 
 const mapDispatchToProps = (dispatch) =>
   bindActionCreators(
     {
       searchRecipes: actions.searchRecipes,
+      resetRecipes: actions.resetRecipes,
+      updateRecipeId: actions.updateRecipeId,
     },
     dispatch
   )

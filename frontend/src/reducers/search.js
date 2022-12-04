@@ -21,7 +21,7 @@ const searchFailed = (state, payload) => {
 export default (state = initialState, { type, payload }) => {
   switch (type) {
     case GET_SEARCH:
-      return searchFetching()
+      return searchFetching(state)
     case RECEIVE_SEARCH:
       return searchFetched(state, payload)
     case FAIL_SEARCH:

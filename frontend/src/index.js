@@ -4,17 +4,24 @@ import { Provider } from "react-redux"
 import thunkMiddleware from "redux-thunk"
 import { createStore, applyMiddleware } from "redux"
 import { hot } from "react-hot-loader"
-import Home from "./Containers/Home"
 import reducers from "./reducers"
+import {
+  BrowserRouter as Router,
+} from "react-router-dom";
+import App from "./App"
 
 const store = createStore(reducers, applyMiddleware(thunkMiddleware))
 
 const WrappedHome = () => (
   <Provider store={store}>
-    <Home />
+    <App />
   </Provider>
 )
 
 const HotHome = hot(module)(WrappedHome)
 
-ReactDOM.render(<HotHome />, document.getElementById("home"))
+ReactDOM.render(
+  <Router>
+    <HotHome />
+  </Router>
+, document.getElementById("app"))
